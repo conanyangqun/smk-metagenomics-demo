@@ -1,0 +1,5 @@
+sample	fastq1	fastq2	layout
+demo_pe	data/demo_pe_1.fq.gz	data/demo_pe_2.fq.gz	paired
+demo_il	data/demo_il.fq.gz		interleaved
+demo_se	data/demo_se.fq.gz		single
+demo_ont	data/demo_ont.fq.gz		long
