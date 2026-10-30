@@ -130,12 +130,22 @@ def _cfg(key):
     return config[key]
 
 
-LEVEL = str(_cfg("level"))
-if LEVEL not in "PCOFGS" or len(LEVEL) != 1:
+LEVELS = config.get("levels", config.get("level"))
+if isinstance(LEVELS, str):
+    LEVELS = [LEVELS]
+if not isinstance(LEVELS, list) or not LEVELS:
     raise WorkflowError(
-        f"config.yaml 中 level 必须为 P/C/O/F/G/S 之一，当前: {LEVEL!r}\n"
+        "config.yaml 中 levels 必须为非空列表，如 levels: [\"S\", \"G\"]\n"
+        "(也兼容旧的单值写法 level: \"S\")"
+    )
+invalid_levels = [lv for lv in LEVELS
+                  if not isinstance(lv, str) or len(lv) != 1 or lv not in "PCOFGS"]
+if invalid_levels:
+    raise WorkflowError(
+        f"config.yaml 中 levels 内的层级必须为 P/C/O/F/G/S 之一，非法值: {invalid_levels}\n"
         "(Bracken 不支持 D/K 水平的丰度重估)"
     )
+LEVELS = [lv.strip().upper() for lv in LEVELS]
 RES = config.get("results_dir", "results")
 LOGS = config.get("logs_dir", "logs")
 
@@ -216,10 +226,10 @@ rule all:
     input:
         expand(f"{RES}/kraken2/{{sample}}.k2report", sample=SAMPLES),
         expand(f"{RES}/bracken/{{sample}}.{{level}}.bracken",
-               sample=SAMPLES, level=LEVEL),
+               sample=SAMPLES, level=LEVELS),
         expand(f"{RES}/bracken/{{sample}}.{{level}}.bracken.report",
-               sample=SAMPLES, level=LEVEL),
-        f"{RES}/abundance_table.{LEVEL}.tsv",
+               sample=SAMPLES, level=LEVELS),
+        expand(f"{RES}/abundance_table.{{level}}.tsv", level=LEVELS),
 
 
 # ------------------------- Kraken2 物种分类 -------------------------
@@ -251,13 +261,12 @@ rule bracken_abundance:
     input:
         report=f"{RES}/kraken2/{{sample}}.k2report",
     output:
-        abundance=f"{RES}/bracken/{{sample}}.{LEVEL}.bracken",
-        report=f"{RES}/bracken/{{sample}}.{LEVEL}.bracken.report",
+        abundance=f"{RES}/bracken/{{sample}}.{{level}}.bracken",
+        report=f"{RES}/bracken/{{sample}}.{{level}}.bracken.report",
     log:
-        f"{LOGS}/bracken/{{sample}}.{LEVEL}.log",
+        f"{LOGS}/bracken/{{sample}}.{{level}}.log",
     params:
         db=BR_DB,
-        level=LEVEL,
         read_len=READ_LEN,
         threshold=THRESHOLD,
     threads: 1
@@ -269,7 +278,7 @@ rule bracken_abundance:
         r"""
         bracken -d "{params.db}" -i "{input.report}" \
             -o "{output.abundance}" -w "{output.report}" \
-            -l {params.level} -r {params.read_len} \
+            -l {wildcards.level} -r {params.read_len} \
             -t {params.threshold} > "{log}" 2>&1
         """
 
@@ -278,19 +287,20 @@ rule bracken_abundance:
 rule abundance_table:
     input:
         expand(f"{RES}/bracken/{{sample}}.{{level}}.bracken",
-               sample=SAMPLES, level=LEVEL),
+               sample=SAMPLES, level=LEVELS),
     output:
-        f"{RES}/abundance_table.{LEVEL}.tsv",
+        f"{RES}/abundance_table.{{level}}.tsv",
     log:
-        f"{LOGS}/abundance_table.{LEVEL}.log",
+        f"{LOGS}/abundance_table.{{level}}.log",
     run:
+        level = str(wildcards.level).upper()
         # 读取各样本 bracken 结果，按 (name, taxonomy_id) 合并为丰度矩阵
         order = []   # taxon 首次出现顺序
         seen_keys = set()   # 配合 order 做去重，避免对 list 做线性查找
         data = {s: {} for s in SAMPLES}
 
         for s in SAMPLES:
-            with open(f"{RES}/bracken/{s}.{LEVEL}.bracken") as fh:
+            with open(f"{RES}/bracken/{s}.{level}.bracken") as fh:
                 for row in csv.DictReader(fh, delimiter="\t"):
                     key = (row["name"], row["taxonomy_id"])
                     data[s][key] = [

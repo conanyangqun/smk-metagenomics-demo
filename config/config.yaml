@@ -24,9 +24,12 @@ kraken2_db: "/path/to/kraken2_db"
 # Bracken 数据库目录（通常与 Kraken2 数据库为同一目录，内含 database*.kmer_distrib）
 bracken_db: "/path/to/kraken2_db"
 
-# 物种分类层级: S=种(species), G=属(genus), F=科, O=目, C=纲, P=门
+# 物种分类层级（列表，可指定多个，每个层级各输出一份 Bracken 结果与汇总丰度表）:
+#   S=种(species), G=属(genus), F=科, O=目, C=纲, P=门
+# 例如: ["S", "G", "F"] 输出种/属/科三级结果
 # 注意: Bracken 不支持 D(域)/K(界) 水平的丰度重估
-level: "S"
+# 兼容旧写法: level: "S" (单个层级)
+levels: ["S"]
 
 # Bracken 使用的读长（需与数据库 kmer 分布文件匹配）
 # Illumina 双端合并后通常为 150；三代数据可先用 reads 长度对应的分布文件，

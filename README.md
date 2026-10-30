@@ -114,7 +114,7 @@ demo_ont	data/demo_ont.fq.gz		long
 | `logs_dir` | 日志目录（相对分析目录，可用绝对路径） | `logs` |
 | `kraken2_db` | Kraken2 数据库目录 | 需修改 |
 | `bracken_db` | Bracken 数据库目录（通常与 kraken2_db 相同） | 需修改 |
-| `level` | 分类层级：`S`=种, `G`=属, `F`=科, `O`=目, `C`=纲, `P`=门（Bracken 不支持 `D`/`K`） | `S` |
+| `levels` | 分类层级列表（可多个）：`S`=种, `G`=属, `F`=科, `O`=目, `C`=纲, `P`=门（Bracken 不支持 `D`/`K`）；每个层级各输出一份 Bracken 结果与汇总丰度表。兼容旧写法 `level: "S"` | `["S"]` |
 | `read_len` | Bracken 读长，必须与库内 `database{N}mers.kmer_distrib` 文件匹配 | `150` |
 | `threshold` | Bracken 重估的最小 reads 数阈值 | `10` |
 | `threads` | 每个样本 Kraken2 分类线程数 | `8` |
@@ -133,7 +133,7 @@ snakemake -s $PIPELINE_DIR/Snakefile --configfile config.yaml -n --use-conda
 snakemake -s $PIPELINE_DIR/Snakefile --configfile config.yaml --use-conda --cores 8
 
 # 指定其他分类层级（例如属水平）运行
-snakemake -s $PIPELINE_DIR/Snakefile --configfile config.yaml --config level=G --use-conda --cores 8
+snakemake -s $PIPELINE_DIR/Snakefile --configfile config.yaml --config levels="[S,G]" --use-conda --cores 8
 
 # 生成流程 DAG 图（可选，需要 graphviz 的 dot 命令，如 conda install graphviz）
 snakemake -s $PIPELINE_DIR/Snakefile --configfile config.yaml --dag | dot -Tpdf > dag.pdf
